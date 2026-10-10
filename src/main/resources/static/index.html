@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Studio</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 28px;
+            text-align: center;
+        }
+        header h1 { margin: 0; font-size: 2.3em; }
+        header p { margin: 10px 0 0; opacity: 0.9; }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            padding: 24px;
+        }
+
+        .panel {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .tab {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #f0f0f0;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        label {
+            display: block;
+            margin-top: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        textarea, select, input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 90px;
+            font-family: inherit;
+        }
+
+        .range-row {
+            display: grid;
+            grid-template-columns: 1fr 60px;
+            gap: 10px;
+            align-items: center;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        button.action {
+            margin-top: 16px;
+            padding: 13px 20px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        button.action:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .preview-area {
+            text-align: center;
+        }
+
+        img {
+            max-width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-top: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .actions {
+            margin-top: 18px;
+            display: none;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .actions button {
+            margin-top: 0;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 14px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .prompt-display {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+            margin-top: 12px;
+            max-height: 160px;
+            overflow-y: auto;
+            display: none;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content { grid-template-columns: 1fr; }
+            .row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🎨 AI Image Studio</h1>
+        <p>Prompt helper, logo/icon generation, Ghibli art, and background removal</p>
+    </header>
+
+    <div class="main-content">
+        <div class="panel">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(event, 'helper')">Prompt Helper</button>
+                <button class="tab" onclick="switchTab(event, 'logo')">Logo</button>
+                <button class="tab" onclick="switchTab(event, 'icon')">Icon</button>
+                <button class="tab" onclick="switchTab(event, 'ghibli')">Ghibli</button>
+                <button class="tab" onclick="switchTab(event, 'bgremove')">Remove BG</button>
+            </div>
+
+            <div id="helper-tab" class="tab-content active">
+                <h2>Prompt Helper</h2>
+                <label>Short Text</label>
+                <textarea id="helperText" placeholder="e.g., modern ecommerce logo"></textarea>
+
+                <label>Mode</label>
+                <select id="helperMode">
+                    <option value="logo">Logo</option>
+                    <option value="icon">Icon</option>
+                    <option value="ghibli">Ghibli</option>
+                </select>
+
+                <button class="action" onclick="promptHelper()">Enhance Prompt</button>
+            </div>
+
+            <div id="logo-tab" class="tab-content">
+                <h2>Generate Logo</h2>
+                <label>Brand Description</label>
+                <textarea id="logoPrompt" placeholder="e.g., modern AI software company"></textarea>
+
+                <label>Style</label>
+                <select id="logoStyle">
+                    <option value="minimalist">Minimalist</option>
+                    <option value="modern">Modern</option>
+                    <option value="vintage">Vintage</option>
+                    <option value="flat">Flat</option>
+                    <option value="geometric">Geometric</option>
+                    <option value="line art">Line Art</option>
+                    <option value="hand drawn">Hand Drawn</option>
+                </select>
+
+                <button class="action" onclick="generateLogo()">Generate Logo</button>
+            </div>
+
+            <div id="icon-tab" class="tab-content">
+                <h2>Generate Icon</h2>
+                <label>Icon Description</label>
+                <textarea id="iconPrompt" placeholder="e.g., shopping cart, settings gear, app icon"></textarea>
+
+                <label>Style</label>
+                <select id="iconStyle">
+                    <option value="minimalist">Minimalist</option>
+                    <option value="modern">Modern</option>
+                    <option value="flat">Flat</option>
+                    <option value="geometric">Geometric</option>
+                    <option value="line art">Line Art</option>
+                </select>
+
+                <button class="action" onclick="generateIcon()">Generate Icon</button>
+            </div>
+
+            <div id="ghibli-tab" class="tab-content">
+                <h2>Generate Ghibli Art</h2>
+
+                <label>Prompt</label>
+                <textarea id="ghibliPrompt" placeholder="e.g., a peaceful village at sunset in Studio Ghibli style"></textarea>
+
+                <button class="action" onclick="generateGhibli()">Generate Ghibli</button>
+            </div>
+
+            <div id="bgremove-tab" class="tab-content">
+                <h2>Remove Background</h2>
+
+                <label>Upload Image</label>
+                <input type="file" id="bgRemoveFile" accept="image/*">
+
+                <button class="action" onclick="removeBackground()">Remove Background</button>
+            </div>
+
+            <div id="loading" class="loading">🎨 Processing... please wait</div>
+        </div>
+
+        <div class="panel preview-area">
+            <h2>Preview</h2>
+            <img id="preview" alt="Generated image">
+            <div id="promptDisplay" class="prompt-display"></div>
+
+            <div class="actions" id="actions">
+                <button onclick="downloadCurrent()">⬇️ Download</button>
+            </div>
+
+            <div id="editorPanel" class="editor-panel">
+                <h3 style="color:#667eea; margin-top:18px;">Image Editor</h3>
+
+                <div class="row">
+                    <div>
+                        <label>Brightness</label>
+                        <div class="range-row">
+                            <input type="range" id="brightness" min="-100" max="100" value="0" oninput="applyFilters()">
+                            <span id="brightnessVal">0</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Contrast</label>
+                        <div class="range-row">
+                            <input type="range" id="contrast" min="-100" max="100" value="0" oninput="applyFilters()">
+                            <span id="contrastVal">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div>
+                        <label>Saturation</label>
+                        <div class="range-row">
+                            <input type="range" id="saturation" min="-100" max="100" value="0" oninput="applyFilters()">
+                            <span id="saturationVal">0</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Hue</label>
+                        <div class="range-row">
+                            <input type="range" id="hue" min="0" max="360" value="0" oninput="applyFilters()">
+                            <span id="hueVal">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <label>Filter Preset</label>
+                <select id="filterPreset" onchange="applyFilters()">
+                    <option value="none">Normal</option>
+                    <option value="warm">Warm</option>
+                    <option value="cool">Cool</option>
+                    <option value="vintage">Vintage</option>
+                    <option value="sepia">Sepia</option>
+                    <option value="bw">Black & White</option>
+                    <option value="cinematic">Cinematic</option>
+                </select>
+
+                <button class="action" onclick="resetFilters()">Reset Adjustments</button>
+                <button class="action" onclick="downloadEdited()">⬇️ Download Edited</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentBase64 = "";
+    let refineImageBase64 = "";
+
+    function switchTab(event, type) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(type + '-tab').classList.add('active');
+    }
+
+    function showLoading(show) {
+        document.getElementById('loading').classList.toggle('active', show);
+        document.querySelectorAll('button.action').forEach(btn => btn.disabled = show);
+    }
+
+    function showResult(base64, prompt) {
+        currentBase64 = base64;
+
+        const img = document.getElementById('preview');
+        img.src = `data:image/png;base64,${base64}`;
+        img.style.display = 'block';
+
+        document.getElementById('actions').style.display = 'flex';
+        document.getElementById('editorPanel').style.display = 'block';
+
+        const promptDisplay = document.getElementById('promptDisplay');
+        promptDisplay.textContent = prompt ? ('Prompt:\n' + prompt) : '';
+        promptDisplay.style.display = prompt ? 'block' : 'none';
+
+        resetFilters();
+    }
+
+    function applyFilters() {
+        const brightness = parseInt(document.getElementById('brightness').value);
+        const contrast = parseInt(document.getElementById('contrast').value);
+        const saturation = parseInt(document.getElementById('saturation').value);
+        const hue = parseInt(document.getElementById('hue').value);
+        const preset = document.getElementById('filterPreset').value;
+
+        document.getElementById('brightnessVal').innerText = brightness;
+        document.getElementById('contrastVal').innerText = contrast;
+        document.getElementById('saturationVal').innerText = saturation;
+        document.getElementById('hueVal').innerText = hue;
+
+        let filter = `brightness(${100 + brightness}%) contrast(${100 + contrast}%) saturate(${100 + saturation}%) hue-rotate(${hue}deg)`;
+
+        switch (preset) {
+            case 'warm':
+                filter += ' sepia(0.2) saturate(1.2)';
+                break;
+            case 'cool':
+                filter += ' hue-rotate(10deg) saturate(0.9)';
+                break;
+            case 'vintage':
+                filter += ' sepia(0.35) contrast(1.1) saturate(0.9)';
+                break;
+            case 'sepia':
+                filter += ' sepia(0.6)';
+                break;
+            case 'bw':
+                filter += ' grayscale(1)';
+                break;
+            case 'cinematic':
+                filter += ' contrast(1.15) saturate(0.9) sepia(0.15)';
+                break;
+        }
+
+        document.getElementById('preview').style.filter = filter;
+    }
+
+    function resetFilters() {
+        document.getElementById('brightness').value = 0;
+        document.getElementById('contrast').value = 0;
+        document.getElementById('saturation').value = 0;
+        document.getElementById('hue').value = 0;
+        document.getElementById('filterPreset').value = 'none';
+
+        document.getElementById('brightnessVal').innerText = 0;
+        document.getElementById('contrastVal').innerText = 0;
+        document.getElementById('saturationVal').innerText = 0;
+        document.getElementById('hueVal').innerText = 0;
+
+        document.getElementById('preview').style.filter = 'none';
+    }
+
+    function downloadCurrent() {
+        if (!currentBase64) return;
+        const a = document.createElement('a');
+        a.href = `data:image/png;base64,${currentBase64}`;
+        a.download = 'image-original.png';
+        a.click();
+    }
+
+    function downloadEdited() {
+        const img = document.getElementById('preview');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+
+        ctx.filter = img.style.filter || 'none';
+        ctx.drawImage(img, 0, 0);
+
+        canvas.toBlob(function(blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'image-edited.png';
+            a.click();
+            URL.revokeObjectURL(url);
+        }, 'image/png');
+    }
+
+    async function promptHelper() {
+        const shortText = document.getElementById('helperText').value.trim();
+        const mode = document.getElementById('helperMode').value;
+
+        if (!shortText) return alert('Enter short text first');
+
+        showLoading(true);
+        try {
+            const res = await fetch('/api/prompt-helper', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ shortText, mode })
+            });
+            const data = await res.json();
+            document.getElementById('promptDisplay').textContent = data.prompt;
+            document.getElementById('promptDisplay').style.display = 'block';
+        } catch (e) {
+            alert('Prompt helper failed: ' + e.message);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function generateLogo() {
+        const prompt = document.getElementById('logoPrompt').value.trim();
+        const style = document.getElementById('logoStyle').value;
+        if (!prompt) return alert('Please describe your brand!');
+
+        showLoading(true);
+        try {
+            const res = await fetch('/api/generate-logo', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ prompt, style })
+            });
+            const data = await res.json();
+            showResult(data.base64, data.prompt);
+        } catch (e) {
+            alert('Logo generation failed: ' + e.message);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function generateIcon() {
+        const prompt = document.getElementById('iconPrompt').value.trim();
+        const style = document.getElementById('iconStyle').value;
+        if (!prompt) return alert('Please describe your icon!');
+
+        showLoading(true);
+        try {
+            const res = await fetch('/api/generate-icon', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ prompt, style })
+            });
+            const data = await res.json();
+            showResult(data.base64, data.prompt);
+        } catch (e) {
+            alert('Icon generation failed: ' + e.message);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function generateGhibli() {
+        const prompt = document.getElementById('ghibliPrompt').value.trim();
+        if (!prompt) {
+            alert('Please enter a prompt');
+            return;
+        }
+
+        showLoading(true);
+        try {
+            const res = await fetch('/api/generate-ghibli', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    style: 'ghibli'
+                })
+            });
+
+            const data = await res.json();
+            showResult(data.base64, data.prompt);
+        } catch (e) {
+            alert('Ghibli generation failed: ' + e.message);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function removeBackground() {
+        const fileInput = document.getElementById('bgRemoveFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('Please upload an image first');
+            return;
+        }
+
+        showLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/remove-background', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) {
+                throw new Error('Background removal failed');
+            }
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+
+            const img = document.getElementById('preview');
+            img.src = url;
+            img.style.display = 'block';
+
+            document.getElementById('actions').style.display = 'flex';
+            document.getElementById('editorPanel').style.display = 'block';
+        } catch (e) {
+            alert('Remove background failed: ' + e.message);
+        } finally {
+            showLoading(false);
+        }
+    }
+</script>
+</body>
+</html>
